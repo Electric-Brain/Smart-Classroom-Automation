@@ -1,6 +1,6 @@
 # 🏫 Autovent — A Complete Smart Classroom
 
-> An IoT-based smart classroom automation system developed as part of the TCET Inhouse Internship in collaboration with **Agastya International Foundation**, deployed and demonstrated at **Sanmitra Mandal Vidhyalaya, Goregaon East**.
+> An IoT-based smart classroom automation system developed as part of the TCET Inhouse Internship in collaboration with **Agastya International Foundation**, deployed and demonstrated at **Sanmitra Mandal Vidhyalaya, Goregaon East, Mumbai**.
 >
 > 🏆 **Winner — Best Depth of Understanding Award** at the project showcase held at Yashwantrao Chavan Center, Mumbai.
 
@@ -11,6 +11,7 @@
 - [Project Overview](#project-overview)
 - [System Architecture](#system-architecture)
 - [Hardware Components](#hardware-components)
+- [Power Architecture](#power-architecture)
 - [Pin Mapping — All Boards](#pin-mapping--all-boards)
 - [Firmware Modules](#firmware-modules)
 - [UART Communication Protocol](#uart-communication-protocol)
@@ -24,60 +25,52 @@
 
 ## Project Overview
 
-Autovent is a fully integrated smart classroom system that automates the physical environment of a classroom — windows, curtains, door, lights, and fan — based on sensor inputs, real-time monitoring via a web dashboard, and a touch/manual override. The system was conceptualized by school students to eliminate the manual workload placed on the school peon, who was responsible for opening and closing windows, doors, and curtains multiple times a day.
+Autovent is a fully integrated smart classroom automation system that automates the physical environment of a classroom — windows, curtains, door, lights, and fan — based on sensor inputs, real-time monitoring via a web dashboard, and a physical touch override. The system was conceptualized by school students to eliminate the manual workload placed on the school peon, who was responsible for opening and closing windows, doors, and curtains multiple times every school day.
 
 **Core capabilities:**
 
 - Automated door opening via PIR motion detection with a 5-second auto-close timer
 - Motor-controlled windows (×2), curtains, and door (servo + DC motor)
-- Relay-controlled lights and fan
-- Live MJPEG video stream from an ESP32-CAM CCTV module
+- Relay-controlled lights and fan with PWM-based fan speed control
+- Live MJPEG video surveillance stream from ESP32-CAM
 - Real-time temperature and humidity monitoring via DHT22
-- Reed switch confirmation for window close verification
-- Stuck-window detection with alert and force-close override
+- Audio announcements via DFPlayer Mini + 3W speaker
+- Reed switch confirmation for window close verification with stuck-window alert
 - Full web dashboard with WebSocket-based live state sync
-- TFT display on the main controller showing system status
-- Touch sensor for physical master on/off toggle
-
+- ILI9488 TFT display showing real-time system status
+- Capacitive touch sensor for physical master ON/OFF toggle
 
 ---
 
 ## System Architecture
 
 ```
-                        ┌─────────────────────────────────┐
-                        │      ESP32 #1 — Main Controller  │
-                        │  (DHT22, Relays, PIR, Touch,     │
-                        │   TFT Display, Reed Switches,    │
-                        │   WiFi Web Server, WebSocket)    │
-                        └────────────┬────────────────────┘
-                                     │ UART2 (TX:17 / RX:16)
-                                     │ 115200 baud
-                        ┌────────────▼────────────────────┐
-                        │      ESP32 #2 — Motor Controller │
-                        │  (Servo: Door, Win1)             │
-                        │  (DC Motor: Win2, Curtain)       │
-                        │  (TB6612 / L298 driver)          │
-                        └─────────────────────────────────┘
+          ┌──────────────────────────────────────────┐
+          │         ESP32 #1 — Main Controller        │
+          │   TFT Display · PIR · Touch · Reed ×2     │
+          │   WiFi Web Server · WebSocket Dashboard   │
+          └───────┬─────────────────┬────────────────┘
+                  │ UART2           │ UART2
+                  │ TX:17 / RX:16   │ TX:17 / RX:16
+         ┌────────▼──────────┐  ┌───▼────────────────────┐
+         │    ESP32 #2       │  │      ESP32 #3           │
+         │   Peripherals     │  │   Motor Controller      │
+         │  Relay · DHT22    │  │  Servo ×2 · DC Motor ×2 │
+         │  Buzzer (TXA)     │  │  TB6612 Driver          │
+         │  DFPlayer + 3W    │  └─────────────────────────┘
+         └───────────────────┘
 
-                        ┌─────────────────────────────────┐
-                        │    ESP32-CAM — CCTV Module       │
-                        │  (AI Thinker, OV2640 sensor)     │
-                        │  MJPEG stream :81/stream         │
-                        │  Flash LED GPIO4                 │
-                        └─────────────────────────────────┘
+          ┌──────────────────────────────────────────┐
+          │         ESP32-CAM — CCTV Module           │
+          │   AI Thinker · OV2640 · Flash LED GPIO4   │
+          │   MJPEG :81/stream · Capture :80/capture  │
+          └──────────────────────────────────────────┘
 
-                        ┌─────────────────────────────────┐
-                        │  ESP32 + TFT — BookBuddy Display │
-                        │  (ILI9341/ST7789 TFT via SPI,   │
-                        │   DFPlayer Mini audio module)    │
-                        └─────────────────────────────────┘
-
-                              [ Browser / Phone ]
-                                      │
-                              HTTP + WebSocket
-                                      │
-                              ESP32 #1 Web Server
+                      [ Browser / Phone ]
+                              │
+                      HTTP + WebSocket
+                              │
+                    ESP32 #1 Web Server (port 80)
 ```
 
 ---
@@ -88,35 +81,78 @@ Autovent is a fully integrated smart classroom system that automates the physica
 
 | Component | Model / Spec | Notes |
 |-----------|-------------|-------|
-| Microcontroller | ESP32 DevKit v1 (30-pin) | Primary controller, WiFi host |
-| TFT Display | ILI9488, 480×320, SPI | Status display, VSPI bus |
-| Temperature & Humidity Sensor | DHT22 (AM2302) | 3.3V, data on GPIO26 |
-| Relay Module | 2-channel, 5V, active-LOW, opto-isolated | Controls light & fan |
-| PIR Sensor | HC-SR501 | Motion detection, door auto-open |
-| Touch Sensor | TTP223 capacitive module | Master ON/OFF toggle |
-| Buzzer | Active buzzer, 3.3–5V | Audio feedback |
+| Microcontroller | ESP32 DevKit v1 (30-pin) | Central brain, WiFi host, web server |
+| TFT Display | ILI9488, 480×320, SPI | Live status display; VSPI bus |
+| PIR Sensor | HC-SR501 | Motion detection → door auto-open |
+| Touch Sensor | TTP223 capacitive module | Physical master ON/OFF toggle |
 | Reed Switch ×2 | Normally-open, magnetic | Window close confirmation |
 
-### ESP32 #2 — Motor Controller
+### ESP32 #2 — Peripherals Board
 
 | Component | Model / Spec | Notes |
 |-----------|-------------|-------|
-| Microcontroller | ESP32 DevKit v1 (30-pin) | Receives UART commands |
-| Servo Motor — Door | Standard 180° servo | Anticlockwise direction (pulse reversed) |
-| Servo Motor — Window 1 | Standard 180° servo | Normal direction |
-| DC Motor — Window 2 | 5–12V DC geared motor | Via H-bridge driver |
-| DC Motor — Curtain | 5–12V DC geared motor | Via H-bridge driver |
-| Motor Driver | TB6612FNG or L298N | Dual H-bridge for WIN2 + Curtain |
+| Microcontroller | ESP32 DevKit v1 (30-pin) | Receives UART commands from ESP32 #1 |
+| Relay Module | 2-channel, 5V, active-LOW, opto-isolated | Channel 1: Lights · Channel 2: Fan |
+| DHT22 Sensor | AM2302, 3.3V | Temperature & humidity; 10kΩ pull-up on data pin |
+| Active Buzzer | 3.3–5V active buzzer | NPN transistor amplification circuit |
+| DFPlayer Mini | MP3 audio module | Audio playback from microSD; UART-controlled |
+| Speaker | 3W, 4–8Ω passive | Connected to DFPlayer Mini DAC output |
+
+### ESP32 #3 — Motor Controller
+
+| Component | Model / Spec | Notes |
+|-----------|-------------|-------|
+| Microcontroller | ESP32 DevKit v1 (30-pin) | Receives UART commands from ESP32 #1 |
+| Servo Motor — Door | Standard 180° servo (MG996R or similar) | Anticlockwise rotation via reversed pulse range |
+| Servo Motor — Window 1 | Standard 180° servo | Normal pulse direction |
+| DC Geared Motor — Window 2 | 5–12V DC geared motor | Motor B channel on TB6612; 3s auto-timeout |
+| DC Geared Motor — Curtain | 5–12V DC geared motor | Motor A channel on TB6612; 3s auto-timeout |
+| TB6612FNG Motor Driver | Dual H-bridge module | Controls Win2 + Curtain DC motors |
 
 ### ESP32-CAM — CCTV Module
 
 | Component | Model / Spec | Notes |
 |-----------|-------------|-------|
-| Camera Module | AI Thinker ESP32-CAM | OV2640 sensor, onboard PSRAM |
-| Flash LED | White LED on GPIO4 | PWM-controlled intensity (0–255) |
-| Antenna | Onboard PCB antenna | External antenna recommended for range |
+| Camera Module | AI Thinker ESP32-CAM | OV2640 sensor, 2MP, onboard PSRAM |
+| Flash LED | White LED on GPIO4 | PWM brightness 0–255 |
+| Antenna | Onboard PCB antenna | External antenna recommended for better range |
 
+### Power & Control Modules
 
+| Component | Spec | Role |
+|-----------|------|------|
+| 5V DC Adapter | 5V, min 2A | Directly powers ESP32-CAM |
+| 12V DC Adapter | 12V, min 3A | Main supply for all other boards + motors |
+| LM2596 Buck Converter ×2 | Step-down, adjustable output | Steps 12V down for ESP32 logic and motor supply |
+| PWM Motor Speed Controller | PWM module | Controls fan speed; between relay output and fan |
+
+### Passive Components
+
+| Component | Value | Purpose |
+|-----------|-------|---------|
+| Resistor | 10kΩ | Pull-up for Reed Switch GPIO 36 & 39; DHT22 data line |
+| NPN Transistor | BC547 / 2N2222 | Buzzer amplification circuit on ESP32 #2 |
+| Jumper Wires | M-M / M-F | Board interconnects |
+| Breadboard / PCB | — | Prototyping and component mounting |
+
+---
+
+## Power Architecture
+
+```
+  ┌─────────────┐     Direct 5V      ┌──────────────────┐
+  │  5V Adapter │ ─────────────────▶ │   ESP32-CAM      │
+  └─────────────┘
+
+  ┌──────────────┐    ┌──────────────────┐    ┌───────────────────────────────┐
+  │  12V Adapter │──▶ │ LM2596 Buck #1   │──▶ │ ESP32 #1, #2, #3  (5V logic) │
+  │              │    └──────────────────┘    └───────────────────────────────┘
+  │              │    ┌──────────────────┐    ┌───────────────────────────────┐
+  │              │──▶ │ LM2596 Buck #2   │──▶ │ DC Motors · Servos · Relays   │
+  └──────────────┘    └──────────────────┘    └───────────────────────────────┘
+```
+
+> ⚠️ Always verify LM2596 output voltage with a multimeter before connecting any ESP32 board. Incorrect voltage will permanently damage the microcontroller.
 
 ---
 
@@ -127,248 +163,248 @@ Autovent is a fully integrated smart classroom system that automates the physica
 | Signal | GPIO | Direction | Notes |
 |--------|------|-----------|-------|
 | TFT CS | 15 | OUT | VSPI chip select |
-| TFT DC | 2 | OUT | Data/Command |
-| TFT RST | 4 | OUT | Reset |
+| TFT DC | 2 | OUT | Data/Command select |
+| TFT RST | 4 | OUT | Display reset |
 | TFT MOSI | 23 | OUT | VSPI MOSI |
 | TFT MISO | 19 | IN | VSPI MISO |
 | TFT SCK | 18 | OUT | VSPI clock |
-| DHT22 DATA | 26 | IN | 10kΩ pull-up recommended |
-| Relay LIGHT | 32 | OUT | LOW = relay ON (active-LOW) |
-| Relay FAN | 33 | OUT | LOW = relay ON (active-LOW) |
-| Buzzer | 5 | OUT | HIGH = buzzer ON |
-| Touch TTP223 | 34 | IN | Input-only, HIGH = touched |
-| PIR HC-SR501 | 35 | IN | Input-only, HIGH = motion |
-| UART2 TX → ESP32#2 RX | 17 | OUT | 115200 baud |
-| UART2 RX ← ESP32#2 TX | 16 | IN | 115200 baud |
-| Reed Switch 1 | 36 | IN | Input-only, external 10kΩ pull-up to 3.3V required |
-| Reed Switch 2 | 39 | IN | Input-only, external 10kΩ pull-up to 3.3V required |
+| PIR HC-SR501 | 35 | IN | Input-only; HIGH = motion detected |
+| Touch TTP223 | 34 | IN | Input-only; HIGH = touched |
+| Reed Switch 1 | 36 | IN | Input-only; external 10kΩ pull-up to 3.3V required |
+| Reed Switch 2 | 39 | IN | Input-only; external 10kΩ pull-up to 3.3V required |
+| UART2 TX → ESP32 #2/#3 RX | 17 | OUT | 115200 baud, 8N1 |
+| UART2 RX ← ESP32 #2/#3 TX | 16 | IN | 115200 baud, 8N1 |
 
-> ⚠️ **GPIO 34, 35, 36, 39 are input-only on ESP32.** No internal pull-ups are available for 36 and 39. Use external 10kΩ resistors to 3.3V for the reed switches.
+> ⚠️ GPIO 34, 35, 36, 39 are input-only. GPIO 36 and 39 have no internal pull-up — external 10kΩ resistors to 3.3V are mandatory.
 
-### ESP32 #2 — Motor Controller
+### ESP32 #2 — Peripherals Board
 
 | Signal | GPIO | Direction | Notes |
 |--------|------|-----------|-------|
-| Servo Door | 5 | OUT | Reversed pulse (2400µs–500µs) for anticlockwise |
-| Servo Win1 | 18 | OUT | Normal pulse (500µs–2400µs) |
-| Motor Driver STBY | 23 | OUT | HIGH = driver enabled |
-| Motor A PWM (Curtain) | 19 | OUT | LEDC channel, 18kHz, 10-bit |
-| Motor A IN1 (Curtain) | 21 | OUT | Direction |
-| Motor A IN2 (Curtain) | 22 | OUT | Direction |
-| Motor B PWM (Win2) | 25 | OUT | LEDC channel, 18kHz, 10-bit |
-| Motor B IN1 (Win2) | 26 | OUT | Direction |
-| Motor B IN2 (Win2) | 27 | OUT | Direction |
-| UART2 RX ← ESP32#1 TX | 16 | IN | 115200 baud |
-| UART2 TX → ESP32#1 RX | 17 | OUT | 115200 baud |
+| Relay LIGHT | 32 | OUT | LOW = relay energised (active-LOW) |
+| Relay FAN | 33 | OUT | LOW = relay energised (active-LOW) |
+| DHT22 DATA | 26 | IN | 10kΩ pull-up to 3.3V |
+| Buzzer (via NPN transistor) | 5 | OUT | HIGH = buzzer ON |
+| DFPlayer Mini RX | 17 | OUT | HardwareSerial TX |
+| DFPlayer Mini TX | 16 | IN | HardwareSerial RX |
+| UART2 RX ← ESP32 #1 TX | 16 | IN | 115200 baud, 8N1 |
+| UART2 TX → ESP32 #1 RX | 17 | OUT | 115200 baud, 8N1 |
+
+### ESP32 #3 — Motor Controller
+
+| Signal | GPIO | Direction | Notes |
+|--------|------|-----------|-------|
+| Servo Door | 5 | OUT | Reversed pulse: 2400µs (closed) → 500µs (open) |
+| Servo Win1 | 18 | OUT | Normal pulse: 500µs (open) → 2400µs (closed) |
+| Motor Driver STBY | 23 | OUT | HIGH = driver enabled; LOW = standby |
+| Motor A PWM (Curtain) | 19 | OUT | LEDC, 18kHz, 10-bit |
+| Motor A IN1 (Curtain) | 21 | OUT | H-bridge direction |
+| Motor A IN2 (Curtain) | 22 | OUT | H-bridge direction |
+| Motor B PWM (Win2) | 25 | OUT | LEDC, 18kHz, 10-bit |
+| Motor B IN1 (Win2) | 26 | OUT | H-bridge direction |
+| Motor B IN2 (Win2) | 27 | OUT | H-bridge direction |
+| UART2 RX ← ESP32 #1 TX | 16 | IN | 115200 baud, 8N1 |
+| UART2 TX → ESP32 #1 RX | 17 | OUT | 115200 baud, 8N1 |
 
 ### ESP32-CAM — AI Thinker
 
 | Signal | GPIO | Notes |
 |--------|------|-------|
 | PWDN | 32 | Camera power down |
-| XCLK | 0 | 20 MHz clock (LEDC ch0) |
+| XCLK | 0 | 20MHz clock (LEDC ch0) |
 | SIOD (SDA) | 26 | SCCB/I2C data |
 | SIOC (SCL) | 27 | SCCB/I2C clock |
-| D7–D0 | 35,34,39,36,21,19,18,5 | Parallel data bus |
+| D7–D0 | 35,34,39,36,21,19,18,5 | 8-bit parallel pixel bus |
 | VSYNC | 25 | Frame sync |
 | HREF | 23 | Line sync |
 | PCLK | 22 | Pixel clock |
-| Flash LED | 4 | PWM, init AFTER camera init |
+| Flash LED | 4 | PWM — must init AFTER `esp_camera_init()` |
 
-> ⚠️ **GPIO4 is shared** between the flash LED and the SD card interface on AI Thinker boards. The flash LED must be initialized **after** `esp_camera_init()` to avoid LEDC conflicts.
+> ⚠️ GPIO4 is shared between flash LED and SD card on AI Thinker boards. Always initialise flash LED **after** `esp_camera_init()`.
 
-
+---
 
 ## Firmware Modules
 
-### `ESP32_Main.ino` (ESP32 #1)
+### `ESP32_Main.ino` — ESP32 #1
 
-The central controller. Responsibilities:
-- Hosts an **AsyncWebServer** on port 80 with WebSocket endpoint `/ws`
-- Serves the full web dashboard (HTML inlined in `web_ui_v7.h`)
-- Polls DHT22 every 3 seconds and pushes updates via WebSocket
-- Polls PIR every loop — rising edge opens door via UART, starts 5-second auto-close timer
-- Polls TTP223 touch sensor with 50ms debounce for master on/off
-- Polls reed switches with 5-sample debounce for window confirmation
-- Forwards motor commands to ESP32 #2 over UART2 (with inversion flags for reversed motors)
-- Updates TFT display (double-buffered sprite) every 1 second
-- Exposes REST endpoints: `/api/state`, `/api/cam`
+Central controller. Hosts **AsyncWebServer** on port 80 with WebSocket at `/ws`. Dashboard HTML served from `web_ui_v7.h` (PROGMEM).
 
-**Motor inversion flags** (in `ESP32_Main.ino`):
+- PIR: rising edge → UART `DOOR_OPEN` + 5s auto-close timer (resets only on new rising edge)
+- Touch: 50ms debounce → toggles `applyMasterSwitch()`
+- Reed switches: 5-sample debounce at 50ms → window close confirmation
+- TFT: double-buffered sprite refresh every 1s
+- REST: `/api/state` (full JSON), `/api/cam` (camera URLs)
+
+**Motor inversion flags:**
 ```cpp
-#define INV_WIN1    true    // Window 1 open/close are physically swapped
+#define INV_WIN1    true    // Window 1 open/close physically swapped
 #define INV_WIN2    false
 #define INV_CURTAIN false
-#define INV_DOOR    true    // Door open/close are physically swapped
+#define INV_DOOR    true    // Door open/close physically swapped
 ```
-Set to `true` if the motor rotates in the wrong direction without rewiring.
 
 ---
 
-### `Motor_v3.ino` (ESP32 #2)
+### `SmartClassroom_Peripheral.ino` — ESP32 #2
+
+Handles all electrical peripherals. Receives UART commands from ESP32 #1.
+
+- Relays: active-LOW; initialised HIGH (OFF) on boot
+- DHT22: reads on `TEMP_REQ` command; responds with `TEMP:<val>,HUM:<val>`
+- Buzzer: driven via NPN transistor for sufficient current; single beep and alert patterns
+- DFPlayer Mini: plays MP3 from microSD on command; 3W speaker output
+
+---
+
+### `Motor_v3.ino` — ESP32 #3
 
 Dedicated motor controller. Listens on UART2 at 115200 baud.
 
-**Servo configuration (anticlockwise door):**
+**Anticlockwise door servo (reversed pulse):**
 ```cpp
-// REVERSED pulse range causes anticlockwise rotation:
-servoDoor.attach(SERVO_DOOR_PIN, 2400, 500);
-// Normal pulse range for Win1:
-servoWin1.attach(SERVO_WIN1_PIN, 500, 2400);
+servoDoor.attach(SERVO_DOOR_PIN, 2400, 500);  // anticlockwise
+servoWin1.attach(SERVO_WIN1_PIN, 500, 2400);  // normal
 ```
 
-DC motors use a 3-second timeout (`MOTOR_TIMEOUT = 3000ms`) after which `motorStop()` is called automatically. This prevents stall damage and generates a `DONE:<name>` response on UART.
+DC motors auto-stop after `MOTOR_TIMEOUT = 3000ms` and send `DONE:<n>` back to ESP32 #1.
 
 ---
 
-### `CAM_v9.ino` (ESP32-CAM)
+### `CAM_v9.ino` — ESP32-CAM
 
-Standalone camera firmware. Exposes three HTTP endpoints:
+Standalone camera node. Two HTTP servers on port 80 and 81:
 
 | Endpoint | Port | Description |
 |----------|------|-------------|
-| `/stream` | 81 | MJPEG live stream (~12fps) |
+| `/stream` | 81 | MJPEG live stream ~12fps |
 | `/capture` | 80 | Single JPEG snapshot |
-| `/flash?intensity=N` | 80 | Set flash LED brightness (0–255) |
+| `/flash?intensity=N` | 80 | Flash LED brightness 0–255 |
 
-Key fixes implemented:
-- `fb_count = 1` + `CAMERA_GRAB_LATEST` prevents frame desync/freeze
-- Frame pacing at 80ms intervals prevents WiFi buffer overflow
-- Flash LED initialized **after** `esp_camera_init()` (GPIO4 LEDC conflict fix)
-- Indoor sensor tuning: auto white balance (mode 2), AEC2, gain control enabled
+Key fixes: `fb_count=1` + `CAMERA_GRAB_LATEST` (freeze fix), 80ms frame pacing (WiFi buffer fix), flash LED init after camera init (GPIO4 conflict fix).
 
 ---
 
+### `web_ui_v7.h` — Dashboard
 
+Full single-page app inlined as PROGMEM. Vanilla HTML/CSS/JS, no external runtime frameworks.
 
-### `web_ui_v7.h`
-
-The complete web dashboard, inlined as a PROGMEM string in the main firmware. Built with vanilla HTML/CSS/JS — no external frameworks needed at runtime (only a Google Fonts CDN call for typography).
-
-Features:
-- Dark-glass design, responsive grid layout
-- Live temperature and humidity
-- Per-actuator open/close buttons (Window 1, Window 2, Curtain, Door)
-- Master Activate / Deactivate button
-- Reed switch status bars with stuck-window alerts and force-close button
-- PIR countdown timer (5-second door auto-close visible in UI)
-- MJPEG camera feed with flash toggle and stream reload
-- WebSocket reconnection with auto-retry
+- Dark-glass UI, responsive 12-column grid
+- Live temp/humidity, PIR 5s countdown
+- Per-actuator open/close buttons (Win1, Win2, Curtain, Door)
+- Reed confirmation bars with stuck-window alert + force-close button
+- MJPEG camera stream + flash toggle + stream reload
+- Master Activate/Deactivate button
+- WebSocket auto-reconnect with 2.5s retry
 
 ---
 
 ## UART Communication Protocol
 
-All commands are ASCII strings terminated with `\n`. Communication is between ESP32 #1 (master) and ESP32 #2 (motor controller).
+All messages are ASCII strings terminated with `\n`. 115200 baud, 8N1.
 
-### Commands — ESP32 #1 → ESP32 #2
+### ESP32 #1 → ESP32 #2 (Peripherals)
 
 | Command | Action |
 |---------|--------|
-| `WIN1_OPEN` | Open Window 1 (servo) |
-| `WIN1_CLOSE` | Close Window 1 (servo) |
-| `WIN2_OPEN` | Open Window 2 (DC motor, forward) |
-| `WIN2_CLOSE` | Close Window 2 (DC motor, reverse) |
-| `WIN1_FORCE_CLOSE` | Force close WIN1 (used on stuck alert) |
-| `WIN2_FORCE_CLOSE` | Force close WIN2 (used on stuck alert) |
-| `CURTAIN_OPEN` | Open curtain (DC motor, forward) |
-| `CURTAIN_CLOSE` | Close curtain (DC motor, reverse) |
-| `DOOR_OPEN` | Open door (servo, 0° → 180°) |
-| `DOOR_CLOSE` | Close door (servo, 180° → 0°) |
-| `ALL_STOP` | Stop all DC motors, home all servos |
+| `LIGHT_ON` / `LIGHT_OFF` | Energise / de-energise Relay 1 |
+| `FAN_ON` / `FAN_OFF` | Energise / de-energise Relay 2 |
+| `BEEP` | Single short buzzer beep |
+| `BEEP_ALERT` | Three-beep alert pattern |
+| `TEMP_REQ` | Request DHT22 reading |
 
-> ⚠️ Commands are auto-inverted by ESP32 #1 for channels flagged in `INV_WIN1` / `INV_DOOR`. The `state.*` variables always reflect the logical intent; only the UART wire carries the inverted string.
+### ESP32 #1 → ESP32 #3 (Motors)
 
-### Responses — ESP32 #2 → ESP32 #1
+| Command | Action |
+|---------|--------|
+| `WIN1_OPEN` / `WIN1_CLOSE` | Servo — Window 1 |
+| `WIN2_OPEN` / `WIN2_CLOSE` | DC Motor B — Window 2 |
+| `WIN1_FORCE_CLOSE` / `WIN2_FORCE_CLOSE` | Force close stuck window |
+| `CURTAIN_OPEN` / `CURTAIN_CLOSE` | DC Motor A — Curtain |
+| `DOOR_OPEN` / `DOOR_CLOSE` | Servo — Door |
+| `ALL_STOP` | Emergency stop all motors + home servos |
+
+> ⚠️ Commands auto-inverted by ESP32 #1 for `INV_WIN1=true` and `INV_DOOR=true` channels.
+
+### ESP32 #3 → ESP32 #1 (Responses)
 
 | Response | Meaning |
 |----------|---------|
 | `OK` | Command acknowledged |
-| `DONE:WIN2` | Win2 DC motor stopped (timeout reached) |
-| `DONE:CURTAIN` | Curtain DC motor stopped (timeout reached) |
-| `ALERT:WIN1_STUCK` | Win1 reed not triggered after close attempt |
-| `ALERT:WIN2_STUCK` | Win2 reed not triggered after close attempt |
-| `WIN1_OPENED` | Win1 reed switch triggered (opened confirmed) |
-| `WIN2_OPENED` | Win2 reed switch triggered (opened confirmed) |
-| `READY` | ESP32 #2 boot complete |
-| `ERR:UNKNOWN` | Unrecognized command received |
+| `DONE:WIN2` / `DONE:CURTAIN` | DC motor auto-stopped (3s timeout) |
+| `ALERT:WIN1_STUCK` / `ALERT:WIN2_STUCK` | Reed not triggered — window obstructed |
+| `WIN1_OPENED` / `WIN2_OPENED` | Reed triggered — open confirmed |
+| `READY` | ESP32 #3 boot complete |
+| `ERR:UNKNOWN` | Unrecognised command |
 
 ---
 
 ## Web Dashboard
 
-Access the dashboard by navigating to the IP address shown on the TFT display after boot (e.g. `http://192.168.x.x`).
+Navigate to the IP shown on the TFT after boot (e.g. `http://192.168.x.x`).
 
-The dashboard communicates over WebSocket (`ws://<ip>/ws`). State is pushed from the ESP32 every 2 seconds (heartbeat) and also on any event change.
-
-**REST API endpoints:**
-
-| Endpoint | Method | Response |
-|----------|--------|----------|
+| Endpoint | Method | Description |
+|----------|--------|-------------|
 | `/` | GET | Full dashboard HTML |
-| `/api/state` | GET | JSON snapshot of all sensor and actuator states |
-| `/api/cam` | GET | JSON with stream URL and flash URL |
+| `/api/state` | GET | JSON snapshot of all states |
+| `/api/cam` | GET | Camera stream and flash URLs |
+| `/ws` | WebSocket | Bidirectional live state sync |
+
+State is pushed every 2 seconds (heartbeat) and immediately on every event change.
 
 ---
 
 ## Setup & Flashing
 
 ### Prerequisites
-
 - Arduino IDE 2.x or PlatformIO
-- ESP32 board package installed (`https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`)
-- All libraries listed below
+- ESP32 board package: `https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json`
+- TFT_eSPI `User_Setup.h` configured for ILI9488, 480×320, VSPI pins
 
-### Steps
+### Flash Order
 
-1. **Configure WiFi credentials** in `ESP32_Main.ino` and `CAM_v9.ino`:
-   ```cpp
-   const char* WIFI_SSID     = "your_ssid";
-   const char* WIFI_PASSWORD = "your_password";
-   ```
-
-2. **Update CAM IP** in `ESP32_Main.ino` after first flashing the CAM:
+1. **Configure WiFi** — set `WIFI_SSID` and `WIFI_PASSWORD` in `ESP32_Main.ino` and `CAM_v9.ino`
+2. **Flash ESP32-CAM** — note Stream + Flash IP from Serial Monitor
+3. **Update CAM IP** in `ESP32_Main.ino`:
    ```cpp
    const char* CAM_STREAM_URL = "http://<cam_ip>:81/stream";
    const char* CAM_FLASH_URL  = "http://<cam_ip>/flash";
    ```
-
-3. **Configure TFT_eSPI** — edit `User_Setup.h` in the TFT_eSPI library to match the pin wiring for your display driver (ILI9488 for the main controller TFT).
-
-4. **Flash order**:
-   - Flash ESP32-CAM first → note down IP from Serial Monitor
-   - Flash ESP32 #2 (motor controller)
-   - Flash ESP32 #1 (main controller) with correct CAM IP
-
-5. **Motor inversion** — if any motor moves in the wrong direction, toggle the corresponding `INV_*` flag in `ESP32_Main.ino` (no hardware rewiring needed).
+4. **Flash ESP32 #3** (Motor Controller) — verify `READY` on Serial Monitor
+5. **Flash ESP32 #2** (Peripherals Board) — verify relays don't click on boot
+6. **Flash ESP32 #1** (Main Controller) — TFT shows IP after WiFi connects
+7. **Verify motor directions** — toggle `INV_*` flags if any motor moves wrong way
+8. **Verify reed switches** — confirm 10kΩ pull-up resistors on GPIO 36 & 39
 
 ---
 
 ## Libraries Required
 
-### ESP32 #1 (Main Controller)
-
+### ESP32 #1 — Main Controller
 | Library | Source |
 |---------|--------|
 | ESPAsyncWebServer | https://github.com/me-no-dev/ESPAsyncWebServer |
 | AsyncTCP | https://github.com/me-no-dev/AsyncTCP |
 | ArduinoJson | Arduino Library Manager |
-| DHT sensor library | Adafruit, Arduino Library Manager |
 | TFT_eSPI | Arduino Library Manager |
 
-### ESP32 #2 (Motor Controller)
+### ESP32 #2 — Peripherals Board
+| Library | Source |
+|---------|--------|
+| DHT sensor library | Adafruit — Arduino Library Manager |
+| Adafruit Unified Sensor | Adafruit — Arduino Library Manager |
+| DFRobotDFPlayerMini | Arduino Library Manager |
 
+### ESP32 #3 — Motor Controller
 | Library | Source |
 |---------|--------|
 | ESP32Servo | Arduino Library Manager |
 
 ### ESP32-CAM
-
 | Library | Source |
 |---------|--------|
 | esp_camera | Built into ESP32 Arduino core |
 | esp_http_server | Built into ESP32 Arduino core |
-
 
 ---
 
@@ -376,14 +412,14 @@ The dashboard communicates over WebSocket (`ws://<ip>/ws`). State is pushed from
 
 | Issue | Root Cause | Fix Applied |
 |-------|-----------|-------------|
-| Door stays open after reboot | State initialized as `true` | `state.doorOpen = false` on boot; `DOOR_CLOSE` sent in `setup()` |
-| PIR door never auto-closes | `pirDoorOpenedAt` was reset every loop iteration while PIR was HIGH | Timer reset only on rising edge (new motion event) |
-| Master OFF does not close door | Door was excluded from `applyMasterSwitch(false)` | Door CLOSE added to both ON and OFF paths; PIR timer cancelled before sending close |
-| ESP32-CAM stream freezes | `fb_count=2` caused frame buffer desync | Set `fb_count=1` + `CAMERA_GRAB_LATEST` |
-| Flash LED non-functional | GPIO4 LEDC conflict with camera init | `ledcAttach(FLASH_LED_PIN, ...)` moved to after `esp_camera_init()` |
-| UART motor commands inverted | Physical motor wiring reversed for WIN1 and DOOR | Software inversion flags `INV_WIN1=true`, `INV_DOOR=true` in `sendMotorCmd()` |
-| ESP32-CAM error 112 (port conflict) | Two `httpd_start()` calls with same port | Stream server fixed at port 81, control server at port 80, with separate `ctrl_port` values |
-| Multiple UART commands dropped | ESP32 #2 not finishing processing before next command arrives | 300ms gap (`MOTOR_CMD_GAP_MS`) inserted between sequential UART sends in master switch |
+| Door stays open after reboot | `state.doorOpen` initialised as `true` | `state.doorOpen = false`; `DOOR_CLOSE` sent in `setup()` |
+| PIR door never auto-closes | `pirDoorOpenedAt` reset every loop while PIR was HIGH | Timer reset only on rising edge |
+| Master OFF does not close door | Door excluded from `applyMasterSwitch(false)` | `DOOR_CLOSE` added to both ON/OFF paths; PIR timer cancelled first |
+| ESP32-CAM stream freezes | `fb_count=2` caused frame buffer desync | `fb_count=1` + `CAMERA_GRAB_LATEST` + 80ms frame pacing |
+| Flash LED non-functional | GPIO4 LEDC conflict with camera init | `ledcAttach()` moved after `esp_camera_init()` |
+| Motor commands physically inverted | WIN1 and DOOR wiring reversed | `INV_WIN1=true`, `INV_DOOR=true` swap UART string in `sendMotorCmd()` |
+| ESP32-CAM error 112 (port conflict) | Two `httpd_start()` calls on same `ctrl_port` | Stream: port 81, `ctrl_port=32769`; Control: port 80 |
+| Sequential UART commands dropped | ESP32 #3 still processing when next command arrived | 300ms `MOTOR_CMD_GAP_MS` between sequential UART sends |
 
 ---
 
@@ -392,7 +428,7 @@ The dashboard communicates over WebSocket (`ws://<ip>/ws`). State is pushed from
 | Name | Role |
 |------|------|
 | Gautam | Firmware development, hardware integration, system architecture |
-| Shivangi | Co-developer, project co-lead |
+| Shivangi Vishwakarma | Co-developer, project co-lead |
 
 **Institution:** Thakur College of Engineering and Technology (TCET), Mumbai
 **Program:** TCET Inhouse Internship
