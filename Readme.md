@@ -428,7 +428,7 @@ State is pushed every 2 seconds (heartbeat) and immediately on every event chang
 | Name | Role |
 |------|------|
 | Gautam | Firmware development, hardware integration, system architecture |
-| Shivangi Vishwakarma | Co-developer, project co-lead |
+| Shivangi | Co-developer, project co-lead |
 
 **Institution:** Thakur College of Engineering and Technology (TCET), Mumbai
 **Program:** TCET Inhouse Internship
