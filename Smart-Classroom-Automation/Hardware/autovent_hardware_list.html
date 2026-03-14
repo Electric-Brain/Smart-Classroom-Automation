@@ -1,0 +1,124 @@
+
+<style>
+  .hw-wrap { padding: 1rem 0; font-family: var(--font-sans); }
+  .hw-section { margin-bottom: 1.5rem; }
+  .hw-section-header {
+    display: flex; align-items: center; gap: 10px;
+    padding: 8px 14px;
+    border-radius: var(--border-radius-md);
+    margin-bottom: 6px;
+    font-size: 13px; font-weight: 500;
+    color: var(--color-text-primary);
+  }
+  .s1 { background: #E6F1FB; color: #0C447C; }
+  .s2 { background: #EEEDFE; color: #3C3489; }
+  .s3 { background: #E1F5EE; color: #085041; }
+  .s4 { background: #FAEEDA; color: #633806; }
+  .s5 { background: #F1EFE8; color: #444441; }
+  .s6 { background: #EAF3DE; color: #27500A; }
+  .hw-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .hw-table th {
+    text-align: left; padding: 7px 12px;
+    font-size: 11px; font-weight: 500;
+    color: var(--color-text-secondary);
+    text-transform: uppercase; letter-spacing: 0.05em;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+  }
+  .hw-table td {
+    padding: 8px 12px;
+    border-bottom: 0.5px solid var(--color-border-tertiary);
+    color: var(--color-text-primary);
+    vertical-align: top;
+  }
+  .hw-table tr:last-child td { border-bottom: none; }
+  .hw-table tr:hover td { background: var(--color-background-secondary); }
+  .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 20px; height: 20px; border-radius: 50%;
+    font-size: 11px; font-weight: 500;
+    background: var(--color-background-secondary);
+    color: var(--color-text-secondary);
+    flex-shrink: 0;
+  }
+  .note-cell { font-size: 12px; color: var(--color-text-secondary); }
+  .qty {
+    display: inline-block;
+    background: var(--color-background-secondary);
+    color: var(--color-text-secondary);
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+</style>
+<div class="hw-wrap">
+
+  <div class="hw-section">
+    <div class="hw-section-header s1">ESP32 #1 — Main Controller</div>
+    <table class="hw-table">
+      <tr><th>#</th><th>Component</th><th>Model / Spec</th><th>Qty</th><th>Notes</th></tr>
+      <tr><td><span class="num">1</span></td><td>Microcontroller</td><td>ESP32 DevKit v1 (30-pin)</td><td><span class="qty">×1</span></td><td class="note-cell">WiFi host, web server, central logic</td></tr>
+      <tr><td><span class="num">2</span></td><td>TFT Display</td><td>ILI9488, 480×320, SPI</td><td><span class="qty">×1</span></td><td class="note-cell">Live status display; VSPI bus</td></tr>
+      <tr><td><span class="num">3</span></td><td>PIR Sensor</td><td>HC-SR501</td><td><span class="qty">×1</span></td><td class="note-cell">Motion detection → door auto-open</td></tr>
+      <tr><td><span class="num">4</span></td><td>Touch Sensor</td><td>TTP223 capacitive module</td><td><span class="qty">×1</span></td><td class="note-cell">Physical master ON/OFF toggle</td></tr>
+      <tr><td><span class="num">5</span></td><td>Reed Switch</td><td>Normally-open, magnetic</td><td><span class="qty">×2</span></td><td class="note-cell">Window close confirmation; needs 10kΩ pull-up on GPIO 36 & 39</td></tr>
+    </table>
+  </div>
+
+  <div class="hw-section">
+    <div class="hw-section-header s2">ESP32 #2 — Peripherals Board</div>
+    <table class="hw-table">
+      <tr><th>#</th><th>Component</th><th>Model / Spec</th><th>Qty</th><th>Notes</th></tr>
+      <tr><td><span class="num">6</span></td><td>Microcontroller</td><td>ESP32 DevKit v1 (30-pin)</td><td><span class="qty">×1</span></td><td class="note-cell">Receives UART commands from ESP32 #1</td></tr>
+      <tr><td><span class="num">7</span></td><td>Relay Module</td><td>2-channel, 5V, active-LOW, opto-isolated</td><td><span class="qty">×1</span></td><td class="note-cell">Ch1: Lights · Ch2: Fan</td></tr>
+      <tr><td><span class="num">8</span></td><td>Temp & Humidity Sensor</td><td>DHT22 (AM2302), 3.3V</td><td><span class="qty">×1</span></td><td class="note-cell">10kΩ pull-up on data line</td></tr>
+      <tr><td><span class="num">9</span></td><td>Active Buzzer</td><td>3.3–5V active buzzer</td><td><span class="qty">×1</span></td><td class="note-cell">Driven via NPN transistor amplification</td></tr>
+      <tr><td><span class="num">10</span></td><td>NPN Transistor</td><td>BC547 / 2N2222</td><td><span class="qty">×1</span></td><td class="note-cell">Buzzer current amplification circuit</td></tr>
+      <tr><td><span class="num">11</span></td><td>DFPlayer Mini</td><td>MP3 audio module</td><td><span class="qty">×1</span></td><td class="note-cell">MicroSD-based playback; UART at 9600 baud; 1kΩ on RX line</td></tr>
+      <tr><td><span class="num">12</span></td><td>Speaker</td><td>3W, 4–8Ω passive</td><td><span class="qty">×1</span></td><td class="note-cell">Connected to DFPlayer Mini DAC output</td></tr>
+    </table>
+  </div>
+
+  <div class="hw-section">
+    <div class="hw-section-header s3">ESP32 #3 — Motor Controller</div>
+    <table class="hw-table">
+      <tr><th>#</th><th>Component</th><th>Model / Spec</th><th>Qty</th><th>Notes</th></tr>
+      <tr><td><span class="num">13</span></td><td>Microcontroller</td><td>ESP32 DevKit v1 (30-pin)</td><td><span class="qty">×1</span></td><td class="note-cell">Receives UART commands from ESP32 #1</td></tr>
+      <tr><td><span class="num">14</span></td><td>Servo Motor</td><td>MG996R or similar, 180°</td><td><span class="qty">×2</span></td><td class="note-cell">Door: anticlockwise (reversed pulse) · Win1: normal</td></tr>
+      <tr><td><span class="num">15</span></td><td>DC Geared Motor</td><td>5–12V DC geared motor</td><td><span class="qty">×2</span></td><td class="note-cell">Win2 (Motor B) · Curtain (Motor A); 3s auto-timeout</td></tr>
+      <tr><td><span class="num">16</span></td><td>Motor Driver</td><td>TB6612FNG dual H-bridge</td><td><span class="qty">×1</span></td><td class="note-cell">Controls both DC motors; STBY pin on GPIO23</td></tr>
+    </table>
+  </div>
+
+  <div class="hw-section">
+    <div class="hw-section-header s4">ESP32-CAM — CCTV Module</div>
+    <table class="hw-table">
+      <tr><th>#</th><th>Component</th><th>Model / Spec</th><th>Qty</th><th>Notes</th></tr>
+      <tr><td><span class="num">17</span></td><td>Camera Module</td><td>AI Thinker ESP32-CAM</td><td><span class="qty">×1</span></td><td class="note-cell">OV2640 sensor, 2MP, onboard PSRAM; MJPEG stream on :81</td></tr>
+    </table>
+  </div>
+
+  <div class="hw-section">
+    <div class="hw-section-header s5">Power & Control</div>
+    <table class="hw-table">
+      <tr><th>#</th><th>Component</th><th>Model / Spec</th><th>Qty</th><th>Notes</th></tr>
+      <tr><td><span class="num">18</span></td><td>5V DC Adapter</td><td>5V, min 2A</td><td><span class="qty">×1</span></td><td class="note-cell">Direct supply to ESP32-CAM only</td></tr>
+      <tr><td><span class="num">19</span></td><td>12V DC Adapter</td><td>12V, min 3A</td><td><span class="qty">×1</span></td><td class="note-cell">Main supply → feeds both LM2596 buck converters</td></tr>
+      <tr><td><span class="num">20</span></td><td>LM2596 Buck Converter</td><td>Step-down, adjustable output</td><td><span class="qty">×2</span></td><td class="note-cell">Buck #1 → 5V for ESP32 boards · Buck #2 → motor/servo supply</td></tr>
+      <tr><td><span class="num">21</span></td><td>PWM Motor Speed Controller</td><td>PWM module</td><td><span class="qty">×1</span></td><td class="note-cell">Fan speed control; between relay output and fan</td></tr>
+    </table>
+  </div>
+
+  <div class="hw-section">
+    <div class="hw-section-header s6">Passive & Common</div>
+    <table class="hw-table">
+      <tr><th>#</th><th>Component</th><th>Value / Spec</th><th>Qty</th><th>Notes</th></tr>
+      <tr><td><span class="num">22</span></td><td>Resistor</td><td>10kΩ</td><td><span class="qty">×3</span></td><td class="note-cell">Pull-up: Reed Switch GPIO36 · GPIO39 · DHT22 data line</td></tr>
+      <tr><td><span class="num">23</span></td><td>Resistor</td><td>1kΩ</td><td><span class="qty">×1</span></td><td class="note-cell">DFPlayer Mini RX line protection</td></tr>
+      <tr><td><span class="num">24</span></td><td>Jumper Wires</td><td>M-M / M-F</td><td><span class="qty">×—</span></td><td class="note-cell">Board-to-board interconnects</td></tr>
+      <tr><td><span class="num">25</span></td><td>Breadboard / PCB</td><td>Prototype board</td><td><span class="qty">×—</span></td><td class="note-cell">Component mounting</td></tr>
+    </table>
+  </div>
+
+</div>
